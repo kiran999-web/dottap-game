@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dot Click Game</title>
+  <style>
+    body {
+      position: relative;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      background-color: #f0f0f0;
+      font-family: Arial, sans-serif;
+      touch-action: manipulation;
+    }
+    .dot {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: grey;
+      transition: background-color 0.3s;
+    }
+    .active {
+      background-color: red !important;
+    }
+    #scoreboard, #roundboard {
+      position: fixed;
+      top: 10px;
+      font-size: 20px;
+    }
+    #scoreboard {
+      left: 10px;
+    }
+    #roundboard {
+      right: 10px;
+    }
+    #start-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      font-size: 18px;
+      border-radius: 8px;
+    }
+    .confetti {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 999;
+    }
+    .confetti img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      max-width: 100vw;
+      max-height: 100vh;
+    }
+    .sad-duck {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+      width: 150px;
+    }
+    #next-round-frame {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      border: 2px solid black;
+      padding: 20px;
+      text-align: center;
+      display: none;
+      z-index: 1001;
+      width: 90%;
+      max-width: 300px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      border-radius: 8px;
+    }
+    #next-round-frame h2 {
+      margin: 0 0 10px;
+      font-size: 20px;
+    }
+    #next-round-frame button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin-top: 10px;
+      border-radius: 6px;
+    }
+    #start-gif {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: 998;
+    }
+      @keyframes pop-in {
+      0% { transform: translateX(-50%) scale(0); opacity: 0; }
+      60% { transform: translateX(-50%) scale(1.2); opacity: 1; }
+      100% { transform: translateX(-50%) scale(1); opacity: 1; }
+    }
+      @keyframes letter-pop {
+      0% { transform: scale(0); opacity: 0; }
+      70% { transform: scale(1.3); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#ff4b2b" />
+</head>
+<body>
+  <div id="game-title" style="position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 1001;"></div>
+  <div id="highscore-display" style="position: fixed; top: 60px; left: 50%; transform: translateX(-50%); font-size: 20px; font-weight: bold; z-index: 1000; color: #ff073a; text-shadow: 0 0 5px #ff073a, 0 0 10px #ff073a, 0 0 15px #ff073a;">Highest Score: 0</div>
+  <div id="scoreboard">Score: 0</div>
+  <div id="roundboard">Round: 1</div>
+  <img id="start-gif" src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExMXoxdjNlbWVrMDV3ZnlwbDM1d3c5MWtmYmMyNzZsbWt2ODVja2l2cyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/wZKpsopqOF1D9x5kAi/giphy.gif" alt="Press Start">
+  <button id="start-btn" style="z-index: 999; position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); background: linear-gradient(to bottom, #ff4b2b, #ff416c); color: white; font-weight: bold; border: none; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); padding: 14px 28px; font-size: 20px; cursor: pointer;">New Game</button>
+  <div id="next-round-frame">
+    <h2 id="next-round-title">Next Round: 2</h2>
+    <button onclick="startGame()">Start Game</button>
+  </div>
+  <script>
+    const titleText = 'DOtTap';
+    const titleContainer = document.getElementById('game-title');
+    [...titleText].forEach((char, i) => {
+      const span = document.createElement('span');
+      span.textContent = char;
+      span.style.fontSize = '64px';
+      span.style.fontFamily = 'Impact, Charcoal, sans-serif';
+      span.style.color = '#ff4b2b';
+      span.style.textShadow = '2px 2px #fff, 4px 4px #ff416c';
+      span.style.opacity = '0';
+      span.style.animation = `letter-pop 0.4s ease ${i * 0.1}s forwards`;
+      titleContainer.appendChild(span);
+    });
+    const body = document.body;
+    const scoreDisplay = document.getElementById('scoreboard');
+    const roundDisplay = document.getElementById('roundboard');
+    const startBtn = document.getElementById('start-btn');
+    const nextRoundFrame = document.getElementById('next-round-frame');
+    const nextRoundTitle = document.getElementById('next-round-title');
+    let score = 0;
+    let highScore = localStorage.getItem('highScore') || 0;
+    const highScoreDisplay = document.getElementById('highscore-display');
+    highScoreDisplay.textContent = `Highest Score: ${highScore}`;
+    let activeDot = null;
+    let clickCount = 0;
+    let round = 1;
+    let frequency = 2000;
+    let appearanceTime = 2000;
+    let intervalId;
+    const maxRounds = 5;
+    const clicksPerRound = 10;
+    let allDots = [];
+    let confetti = null;
+
+    function createDots() {
+      allDots.forEach(dot => dot.remove());
+      allDots = [];
+      const placedPositions = [];
+      for (let i = 0; i < 15; i++) {
+        let dot = document.createElement('div');
+        dot.classList.add('dot');
+        let tries = 0;
+        let validPosition = false;
+        while (!validPosition && tries < 100) {
+          const maxX = window.innerWidth - 60;
+          const dotPadding = 60;
+          const topMargin = 100;
+          const maxY = window.innerHeight - dotPadding - 100;
+          const x = Math.floor(Math.random() * maxX);
+          const y = Math.floor(Math.random() * (maxY - topMargin)) + topMargin;
+          validPosition = placedPositions.every(pos => {
+            const dx = pos.x - x;
+            const dy = pos.y - y;
+            return Math.sqrt(dx * dx + dy * dy) > 100;
+          });
+          if (validPosition) {
+            dot.style.left = `${x}px`;
+            dot.style.top = `${y}px`;
+            placedPositions.push({ x, y });
+          }
+          tries++;
+        }
+        dot.dataset.index = i;
+        dot.addEventListener('click', () => {
+          if (dot === activeDot) {
+            score++;
+            scoreDisplay.textContent = `Score: ${score}`;
+            dot.classList.remove('active');
+            activeDot = null;
+            clickCount++;
+            if (clickCount % clicksPerRound === 0) {
+              clearInterval(intervalId);
+              celebrateSuccess();
+            }
+          } else {
+            clearInterval(intervalId);
+            endGame();
+          }
+        });
+        body.appendChild(dot);
+        allDots.push(dot);
+      }
+    }
+
+    function celebrateSuccess() {
+      if (round === maxRounds) {
+        setTimeout(() => {
+          const minions = document.createElement('img');
+          minions.src = 'https://media.giphy.com/media/3ohs4BSacFKI7A717y/giphy.gif';
+          minions.style.position = 'fixed';
+          minions.style.top = '50%';
+          minions.style.left = '50%';
+          minions.style.transform = 'translate(-50%, -50%)';
+          minions.style.zIndex = '1002';
+          minions.style.maxWidth = '90vw';
+          minions.style.maxHeight = '80vh';
+
+          const scoreText = document.createElement('div');
+          scoreText.innerText = `You completed all rounds! Final Score: ${score}`;
+          scoreText.style.position = 'fixed';
+          scoreText.style.top = '20%';
+          scoreText.style.left = '50%';
+          scoreText.style.transform = 'translateX(-50%)';
+          scoreText.style.fontSize = '24px';
+          scoreText.style.fontWeight = 'bold';
+          scoreText.style.color = '#ff073a';
+          scoreText.style.zIndex = '1003';
+
+          document.body.appendChild(minions);
+          document.body.appendChild(scoreText);
+
+          setTimeout(() => {
+            minions.remove();
+            scoreText.remove();
+            resetGame();
+          }, 5000);
+        }, 2000);
+        return;
+      }
+      round++;
+      if (confetti) confetti.remove();
+      nextRoundFrame.style.display = 'block';
+      nextRoundTitle.textContent = `Next Round: ${round}`;
+    }
+
+    function endGame() {
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('highScore', highScore);
+        highScoreDisplay.textContent = `Highest Score: ${highScore}`;
+      }
+      if (activeDot) activeDot.classList.remove('active');
+      const duck = document.createElement('img');
+      duck.src = 'https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHYwc3YwY2J6cHFoMHdyOHV5bjYxOHN2ajJpamFkY2tlNGZnbXBzdCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WoqIEpOqZIRQHrtbQ5/giphy.gif';
+      duck.className = 'sad-duck';
+      body.appendChild(duck);
+      setTimeout(() => {
+        duck.remove();
+        if (confetti) confetti.remove();
+        resetGame();
+      }, 3000);
+    }
+
+    function resetGame() {
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('highScore', highScore);
+        highScoreDisplay.textContent = `Highest Score: ${highScore}`;
+      }
+      clickCount = 0;
+      round = 1;
+      frequency = 2000;
+      appearanceTime = 1000;
+      score = 0;
+      scoreDisplay.textContent = 'Score: 0';
+      roundDisplay.textContent = 'Round: 1';
+      startBtn.style.display = 'block';
+document.getElementById('game-title').style.display = 'flex';
+document.getElementById('highscore-display').style.display = 'block';
+      nextRoundFrame.style.display = 'none';
+      allDots.forEach(dot => dot.remove());
+      allDots = [];
+      clearInterval(intervalId);
+      document.getElementById('start-gif').style.display = 'block';
+    }
+
+    function startGame() {
+      document.getElementById('start-gif').style.display = 'none';
+document.getElementById('game-title').style.display = 'none';
+document.getElementById('highscore-display').style.display = 'none';
+      nextRoundFrame.style.display = 'none';
+      startBtn.style.display = 'none';
+      roundDisplay.textContent = `Round: ${round}`;
+      scoreDisplay.textContent = `Score: ${score}`;
+      createDots();
+      startRound();
+    }
+
+    function startRound() {
+      intervalId = setInterval(() => {
+        if (activeDot) activeDot.classList.remove('active');
+        const randomIndex = Math.floor(Math.random() * allDots.length);
+        activeDot = allDots[randomIndex];
+        activeDot.classList.add('active');
+        setTimeout(() => {
+          if (activeDot) {
+            activeDot.classList.remove('active');
+            activeDot = null;
+          }
+        }, appearanceTime);
+      }, frequency);
+    }
+
+    function nextRound() {
+      frequency = Math.max(300, frequency - 300);
+      appearanceTime = Math.max(500, appearanceTime - 100);
+      roundDisplay.textContent = `Round: ${round}`;
+      createDots();
+      startRound();
+    }
+
+    startBtn.addEventListener('click', () => {
+      score = 0;
+      round = 1;
+      frequency = 2000;
+      appearanceTime = 1000;
+      clickCount = 0;
+      startGame();
+    });
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(reg => console.log("Service Worker Registered"))
+      .catch(err => console.log("SW registration failed:", err));
+  });
+}
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "DotTap",
+  "short_name": "DotTap",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f0f0f0",
+  "theme_color": "#ff4b2b",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/color/192/circled.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://img.icons8.com/color/512/circled.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
